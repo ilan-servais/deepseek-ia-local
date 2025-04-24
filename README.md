@@ -71,4 +71,20 @@ Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur pour
 
 ## 📁 Structure du projet
 
-rag-deepseek/ ├── app/ │ ├── api/ │ │ └── chat/ │ │ └── route.ts # Endpoint API pour le chat │ ├── globals.css # Styles globaux │ ├── layout.tsx # Layout principal │ └── page.tsx # Page d'accueil ├── components/ │ ├── base/ │ │ ├── Button.tsx # Composant de bouton réutilisable │ │ ├── Form.tsx # Composant de formulaire │ │ └── Input.tsx # Composant d'input │ └── chat/ │ └── Client.tsx # Interface principale du chat ├── public/ └── ... (fichiers de configuration)
+rag-deepseek/
+├── app/
+│   ├── api/
+│   │   └── chat/
+│   │       └── route.ts      # Endpoint API pour le chat
+│   ├── globals.css           # Styles globaux
+│   ├── layout.tsx            # Layout principal
+│   └── page.tsx              # Page d'accueil
+├── components/
+│   ├── base/
+│   │   ├── Button.tsx        # Composant de bouton réutilisable
+│   │   ├── Form.tsx          # Composant de formulaire
+│   │   └── Input.tsx         # Composant d'input 
+│   └── chat/
+│       └── Client.tsx        # Interface principale du chat
+├── public/
+└── ... (fichiers de configuration)
