@@ -19,20 +19,20 @@ const BaseButton: React.FC<BaseButtonProps> = (props) => {
   } = props
 
   const variantClasses = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
-    secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-800',
-    outline: 'bg-transparent border border-gray-300 hover:bg-gray-100 text-gray-800',
-    ghost: 'bg-transparent hover:bg-gray-100 text-gray-800'
+    primary: 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md hover:shadow-lg',
+    secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-700 shadow-sm',
+    outline: 'bg-transparent border-2 border-gray-300 hover:bg-gray-50 text-gray-700',
+    ghost: 'bg-transparent hover:bg-gray-100 text-gray-700'
   }
 
   const sizeClasses = {
-    sm: 'text-sm py-1 px-3',
-    md: 'text-base py-2 px-4',
-    lg: 'text-lg py-3 px-6'
+    sm: 'text-sm py-1.5 px-3',
+    md: 'text-base py-2.5 px-5',
+    lg: 'text-lg py-3.5 px-7'
   }
 
-  const baseClasses = 'font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500'
-  const disabledClasses = disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+  const baseClasses = 'font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-1'
+  const disabledClasses = disabled ? 'opacity-60 cursor-not-allowed shadow-none' : 'cursor-pointer'
 
   return (
     <button
