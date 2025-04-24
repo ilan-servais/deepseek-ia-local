@@ -55,13 +55,14 @@ export async function POST(req: Request) {
         
         // Extrait uniquement le texte généré
         if (jsonData.response) {
-          // Renvoie uniquement le texte de la réponse
-          controller.enqueue(new TextEncoder().encode(jsonData.response));
+          // Format spécial pour vercel/ai - on préfixe avec "0:" et on encode en JSON
+          // Le format attendu est "0:message" où 0 est le code pour un message texte
+          const formattedData = `0:${JSON.stringify(jsonData.response)}\n`;
+          controller.enqueue(new TextEncoder().encode(formattedData));
         }
       } catch (error) {
         console.error('Erreur de parsing JSON:', error);
-        // En cas d'erreur, on passe le chunk tel quel
-        controller.enqueue(chunk);
+        // En cas d'erreur, on passe simplement à l'itération suivante
       }
     }
   });
