@@ -108,18 +108,3 @@ rag-deepseek/
 ### Modèle IA
 - **deepseek-r1:1.5b** - Un modèle de langage efficace et léger
 
-## 🧠 Fonctionnalités à venir
-
-- [ ] Intégration RAG complète avec pgvector
-- [ ] Historique des conversations
-- [ ] Exportation des conversations
-- [ ] Support multi-modèles
-- [ ] Interface d'administration
-
-## 🤝 Contribution
-
-Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou une pull request.
-
-## 📜 Licence
-
-[MIT](LICENSE)
