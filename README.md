@@ -90,3 +90,36 @@ rag-deepseek/
 ├── public/
 └── ... (fichiers de configuration)
 ```
+
+## 🔍 Architecture technique
+
+### Frontend
+- **Next.js 15** avec App Router pour le routage et le rendu
+- **TailwindCSS** pour le styling
+- **Vercel AI SDK** pour la gestion des conversations et du streaming
+- **Composants React** modulaires et réutilisables
+
+### Backend
+- **API Route Next.js** pour l'endpoint `/api/chat`
+- **Streaming** des réponses du modèle en temps réel
+- **Intégration Ollama** via son API REST
+- **Transformation des données** pour compatibilité avec le SDK Vercel AI
+
+### Modèle IA
+- **deepseek-r1:1.5b** - Un modèle de langage efficace et léger
+
+## 🧠 Fonctionnalités à venir
+
+- [ ] Intégration RAG complète avec pgvector
+- [ ] Historique des conversations
+- [ ] Exportation des conversations
+- [ ] Support multi-modèles
+- [ ] Interface d'administration
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou une pull request.
+
+## 📜 Licence
+
+[MIT](LICENSE)
