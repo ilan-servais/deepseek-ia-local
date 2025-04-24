@@ -1,14 +1,25 @@
+/* Ces directives sont traitées par le processeur Tailwind CSS */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* Styles spécifiques pour l'animation des messages */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
 .message-bubble {
   animation: fadeIn 0.3s ease-out forwards;
 }
 
 .typing-dot {
-  animation: blink 1.4s infinite;
+  animation: pulse 1.5s infinite;
 }
 
 .typing-dot:nth-child(2) {
@@ -19,19 +30,14 @@
   animation-delay: 0.4s;
 }
 
-/* Styles globaux pour améliorer l'apparence */
+/* Variables globales */
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 240, 249, 255;
-  --background-end-rgb: 249, 250, 251;
+  --background-rgb: 255, 255, 255;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      rgb(var(--background-start-rgb)),
-      rgb(var(--background-end-rgb))
-    );
+  background: rgb(var(--background-rgb));
   min-height: 100vh;
 }
