@@ -71,6 +71,7 @@ Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur pour
 
 ## 📁 Structure du projet
 
+```txt
 rag-deepseek/
 ├── app/
 │   ├── api/
@@ -88,3 +89,4 @@ rag-deepseek/
 │       └── Client.tsx        # Interface principale du chat
 ├── public/
 └── ... (fichiers de configuration)
+```
