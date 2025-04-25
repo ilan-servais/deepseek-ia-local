@@ -34,6 +34,7 @@ Le modèle utilisé est **`deepseek-r1:1.5b`**, accessible via l'API REST d'Olla
 
 ### Prérequis
 - Node.js 18+ et npm
+- [Docker](https://www.docker.com/) pour le conteneur PostgreSQL
 - [Ollama](https://ollama.ai/) installé localement
 - Modèle deepseek-r1:1.5b installé sur Ollama
 
@@ -48,6 +49,16 @@ cd rag-deepseek
 
 # Installer les dépendances
 npm install
+
+# Configurer les variables d'environnement
+cp .env.example .env.local
+```
+
+### Configuration de la base de données
+
+```bash
+# Démarrer le conteneur PostgreSQL avec pgvector
+docker-compose up -d
 ```
 
 ### Configuration d'Ollama
@@ -68,6 +79,42 @@ npm run dev
 ```
 
 Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur pour voir l'interface.
+
+## 🔧 Configuration
+
+Assurez-vous que votre fichier `.env.local` contient les variables d'environnement suivantes:
+
+```
+OLLAMA_API_HOST=http://localhost:11434
+
+# Configuration PostgreSQL
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=postgres
+```
+
+## 🔍 Dépannage
+
+Si vous rencontrez des erreurs:
+
+1. Vérifiez qu'Ollama est bien lancé et que le modèle est installé:
+   ```bash
+   ollama list
+   ```
+
+2. Vérifiez que le conteneur Docker est en cours d'exécution:
+   ```bash
+   docker ps
+   ```
+
+3. Initialisez la base de données depuis l'interface web:
+   - Allez dans l'onglet "Documents"
+   - Cliquez sur "Configurer la Base de Données"
+   - Suivez les étapes pour vérifier la connexion et initialiser les tables
+
+4. Pour des diagnostics, consultez la page `/api/diagnostics` dans votre navigateur.
 
 ## 📁 Structure du projet
 
