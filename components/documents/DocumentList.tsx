@@ -55,7 +55,7 @@ const DocumentList: React.FC = () => {
       ) : (
         <div className="divide-y divide-gray-200">
           {documents.map((doc) => (
-            <div key={doc.id} className="py-3">
+            <div key={`document-${doc.id}`} className="py-3">
               <div className="flex justify-between items-center">
                 <p className="font-medium text-gray-800">{doc.filename}</p>
                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">

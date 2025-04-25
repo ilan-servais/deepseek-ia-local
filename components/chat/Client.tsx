@@ -50,6 +50,13 @@ const ChatClient: React.FC = () => {
     }
   }
 
+  // Ces exemples de questions ont maintenant des clés uniques
+  const exampleQuestions = [
+    { id: 1, text: "Qu'est-ce que le deep learning ?" },
+    { id: 2, text: "Explique-moi la programmation fonctionnelle" },
+    { id: 3, text: "Comment améliorer mes compétences en Next.js ?" }
+  ]
+
   return (
     <div className="flex flex-col h-full bg-white">
       <div 
@@ -61,15 +68,14 @@ const ChatClient: React.FC = () => {
             <div className="max-w-md w-full py-8 px-4">
               <h2 className="text-2xl font-semibold text-center text-gray-800 mb-6">Comment puis-je vous aider ?</h2>
               <div className="grid gap-3">
-                <div className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-lg border border-gray-200 cursor-pointer">
-                  <p className="font-medium text-gray-800">Qu'est-ce que le deep learning ?</p>
-                </div>
-                <div className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-lg border border-gray-200 cursor-pointer">
-                  <p className="font-medium text-gray-800">Explique-moi la programmation fonctionnelle</p>
-                </div>
-                <div className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-lg border border-gray-200 cursor-pointer">
-                  <p className="font-medium text-gray-800">Comment améliorer mes compétences en Next.js ?</p>
-                </div>
+                {exampleQuestions.map(question => (
+                  <div 
+                    key={`question-${question.id}`} 
+                    className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-lg border border-gray-200 cursor-pointer"
+                  >
+                    <p className="font-medium text-gray-800">{question.text}</p>
+                  </div>
+                ))}
               </div>
               <div className="mt-8 text-center text-sm text-gray-500">
                 <p>Modèle actuel : deepseek-r1:1.5b</p>
@@ -80,7 +86,7 @@ const ChatClient: React.FC = () => {
           <div className="max-w-3xl mx-auto space-y-6 pb-20">
             {messages.map((message, index) => (
               <div 
-                key={message.id}
+                key={`message-${message.id || index}`}
                 className={`message-bubble ${message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}
                 style={{ animationDelay: `${index * 0.1}s` }}
               >

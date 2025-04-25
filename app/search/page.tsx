@@ -131,7 +131,7 @@ export default function SearchPage() {
                 ) : (
                   <div className="space-y-4">
                     {results.results.map((doc: any) => (
-                      <div key={doc.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div key={`doc-${doc.id}`} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex justify-between mb-2">
                           <h4 className="font-medium text-gray-900">{doc.filename}</h4>
                           <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
@@ -158,7 +158,7 @@ export default function SearchPage() {
                 ) : (
                   <div className="space-y-6 mb-6">
                     {results.documentResults.map((doc: any) => (
-                      <div key={doc.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div key={`docResult-${doc.id}`} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex justify-between mb-2">
                           <h4 className="font-medium text-gray-900">{doc.filename}</h4>
                           <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
@@ -170,7 +170,7 @@ export default function SearchPage() {
                         <div className="mt-3 space-y-2">
                           <h5 className="text-xs font-medium text-gray-700">Extraits les plus pertinents:</h5>
                           {doc.chunks.slice(0, 3).map((chunk: any) => (
-                            <div key={chunk.id} className="text-sm p-2 bg-white border border-gray-100 rounded">
+                            <div key={`chunk-${doc.id}-${chunk.id || chunk.index}`} className="text-sm p-2 bg-white border border-gray-100 rounded">
                               <p className="text-xs text-gray-400 mb-1">
                                 Chunk #{chunk.index} • Similarité: {Math.round(chunk.similarity * 100)}%
                               </p>
