@@ -59,6 +59,9 @@ cp .env.example .env.local
 ```bash
 # Démarrer le conteneur PostgreSQL avec pgvector
 docker-compose up -d
+
+# Vérifier que le conteneur est bien démarré
+docker ps
 ```
 
 ### Configuration d'Ollama
@@ -109,12 +112,25 @@ Si vous rencontrez des erreurs:
    docker ps
    ```
 
-3. Initialisez la base de données depuis l'interface web:
+3. Si vous rencontrez des erreurs d'authentification avec PostgreSQL:
+   ```bash
+   # Arrêter le conteneur existant
+   docker-compose down
+   
+   # Supprimer le volume (ATTENTION: cette opération supprimera définitivement toutes les données 
+   # stockées dans votre base PostgreSQL, y compris les documents et embeddings générés)
+   docker volume rm rag-deepseek_pg_data
+   
+   # Redémarrer le conteneur
+   docker-compose up -d
+   ```
+
+4. Initialisez la base de données depuis l'interface web:
    - Allez dans l'onglet "Documents"
    - Cliquez sur "Configurer la Base de Données"
    - Suivez les étapes pour vérifier la connexion et initialiser les tables
 
-4. Pour des diagnostics, consultez la page `/api/diagnostics` dans votre navigateur.
+5. Pour des diagnostics, consultez la page `/api/diagnostics` dans votre navigateur.
 
 ## 📁 Structure du projet
 
