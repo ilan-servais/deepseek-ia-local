@@ -15,9 +15,11 @@ export interface ExtractedText {
 }
 
 export async function extractTextFromFile(filePath: string): Promise<ExtractedText> {
-  // Obtenir l'extension du fichier
+  // Déterminer l'extension du fichier
   const fileExt = path.extname(filePath).toLowerCase();
   const fileName = path.basename(filePath);
+  
+  console.log(`Extraction du texte depuis ${fileName} (extension: ${fileExt})`);
   
   let content = '';
   
@@ -26,10 +28,12 @@ export async function extractTextFromFile(filePath: string): Promise<ExtractedTe
     const dataBuffer = await readFile(filePath);
     const data = await pdfParse(dataBuffer);
     content = data.text;
-  } else if (fileExt === '.txt') {
-    // Extraction du texte brut
+    console.log(`PDF extrait avec succès: ${content.length} caractères`);
+  } else if (fileExt === '.txt' || fileExt === '.md') {
+    // Extraction du texte brut ou markdown
     const data = await readFile(filePath, 'utf8');
     content = data;
+    console.log(`Fichier texte/markdown extrait avec succès: ${content.length} caractères`);
   } else {
     throw new Error(`Format de fichier non pris en charge: ${fileExt}`);
   }
@@ -68,7 +72,7 @@ export function chunkText(text: string, maxChunkSize: number = 1000): string[] {
       }
     } else if (currentChunk.length + paragraph.length + 2 > maxChunkSize) {
       // Si l'ajout du paragraphe dépasse la taille maximale,
-      // enregistrer le chunk actuel et commencer un nouveau
+      // sauvegarder le chunk actuel et commencer un nouveau
       chunks.push(currentChunk.trim());
       currentChunk = paragraph;
     } else {

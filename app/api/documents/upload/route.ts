@@ -1,33 +1,32 @@
-import { NextResponse } from 'next/server';
-import { NextRequest } from 'next/server';
-import { parse } from 'path';
-import { writeFile, mkdir, unlink } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { NextRequest, NextResponse } from 'next/server';
+import path from 'path';
 import * as fs from 'fs';
-import { query } from '@/lib/db/postgres';
+import { writeFile, mkdir, unlink } from 'fs/promises';
+import { existsSync } from 'fs';
+import { join } from 'path';
+import { query, checkDatabaseState } from '@/lib/db/postgres';
 import { formatEmbeddingForPgVector, isValidEmbedding } from '@/lib/embeddings/utils';
 import { extractTextFromFile, chunkText } from '@/lib/services/textExtractor';
 import { initializeDatabase } from '@/lib/db/postgres';
 
-// Définition d'interface pour les informations du fichier
+// Types de fichiers acceptés
+const ALLOWED_FILE_TYPES = [
+  'application/pdf',  
+  'text/plain',       
+  'text/markdown',    
+  'text/x-markdown'   // MIME type pour Markdown
+];
+
+// Extensions de fichiers acceptées
+const ALLOWED_FILE_EXTENSIONS = ['.pdf', '.txt', '.md'];
+
+// Interface pour les informations du fichier
 interface FileInfo {
   filename: string;
   filePath: string;
   size: number;
   type: string;
 }
-
-// Types de fichiers acceptés
-const ALLOWED_FILE_TYPES = [
-  'application/pdf',  // PDF
-  'text/plain',       // Texte
-  'text/markdown',    // Markdown
-  'text/x-markdown'   // Autre MIME type pour Markdown
-];
-
-// Extensions de fichiers acceptées (pour les cas où le type MIME n'est pas correctement détecté)
-const ALLOWED_FILE_EXTENSIONS = ['.pdf', '.txt', '.md'];
 
 // Fonction pour vérifier si un type de fichier est autorisé
 function isAllowedFileType(filename: string, mimeType: string): boolean {
@@ -77,13 +76,6 @@ async function handleFormData(req: NextRequest): Promise<FileInfo> {
   };
 }
 
-// Désactiver le body parser intégré pour gérer l'upload de fichiers
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 // S'assurer que le répertoire d'uploads existe
 const ensureUploadDir = async () => {
   const uploadDir = join(process.cwd(), 'uploads');
@@ -98,6 +90,7 @@ function getFileExtension(filename: string): string {
   return filename.substring(filename.lastIndexOf('.')).toLowerCase();
 }
 
+// Fonction pour insérer un document et ses chunks dans la base de données
 async function processAndStoreDocument(filePath: string, fileName: string): Promise<any> {
   try {
     // Afficher le type de fichier pour le débogage
@@ -106,6 +99,7 @@ async function processAndStoreDocument(filePath: string, fileName: string): Prom
     
     // Extraire le texte du fichier
     const extractedText = await extractTextFromFile(filePath);
+    console.log(`Texte extrait avec succès: ${extractedText.content.length} caractères`);
     
     // Insérer le document dans la base de données
     const documentResult = await query(
@@ -113,9 +107,11 @@ async function processAndStoreDocument(filePath: string, fileName: string): Prom
       [fileName, extractedText.content]
     );
     const documentId = documentResult.rows[0].id;
+    console.log(`Document inséré avec l'ID: ${documentId}`);
     
     // Découper le texte en chunks
     const chunks = chunkText(extractedText.content);
+    console.log(`Texte découpé en ${chunks.length} chunks`);
     
     // Pour stocker les infos du fichier à retourner
     let fileDetails = {
@@ -124,55 +120,102 @@ async function processAndStoreDocument(filePath: string, fileName: string): Prom
       type: ''
     };
 
+    // Vérifier que Ollama est disponible
+    try {
+      const ollamaCheck = await fetch(`${process.env.OLLAMA_API_HOST}/api/tags`);
+      if (!ollamaCheck.ok) {
+        throw new Error(`Ollama API n'est pas disponible. Code: ${ollamaCheck.status}`);
+      }
+      console.log('Connexion à Ollama vérifiée avec succès');
+    } catch (error) {
+      console.error('Erreur lors de la vérification de Ollama:', error);
+      throw new Error('Impossible de se connecter à Ollama. Assurez-vous que le service est en cours d\'exécution.');
+    }
+
+    let successfulEmbeddings = 0;
+    let failedEmbeddings = 0;
+
     // Insérer les chunks dans la base de données
     for (let i = 0; i < chunks.length; i++) {
-      // Insérer le chunk
+      console.log(`Traitement du chunk ${i+1}/${chunks.length} (taille: ${chunks[i].length} caractères)`);
+      
       const chunkResult = await query(
-        'INSERT INTO chunks (document_id, content, chunk_index) VALUES ($1, $2, $3) RETURNING id',
+        'INSERT INTO chunks(document_id, content, chunk_index) VALUES($1, $2, $3) RETURNING id',
         [documentId, chunks[i], i]
       );
-      
       const chunkId = chunkResult.rows[0].id;
+      console.log(`Chunk inséré avec l'ID: ${chunkId}`);
       
-      // Générer un embedding pour ce chunk via Ollama
-      const embeddingResponse = await fetch(`${process.env.OLLAMA_API_HOST}/api/embeddings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'deepseek-r1:1.5b',
-          prompt: chunks[i],
-        }),
-      });
-      
-      if (!embeddingResponse.ok) {
-        throw new Error(`Erreur lors de la génération de l'embedding pour le chunk ${i}`);
+      // Générer l'embedding pour ce chunk
+      try {
+        // Limiter la taille du texte pour éviter les erreurs
+        const maxTextLength = 8000; // Limiter à 8000 caractères pour éviter les problèmes avec l'API
+        const truncatedText = chunks[i].length > maxTextLength 
+          ? chunks[i].substring(0, maxTextLength) 
+          : chunks[i];
+          
+        console.log(`Génération de l'embedding pour le chunk ${i+1} (longueur: ${truncatedText.length})...`);
+        
+        const embeddingResponse = await fetch(`${process.env.OLLAMA_API_HOST}/api/embeddings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'deepseek-r1:1.5b',
+            prompt: truncatedText,
+          }),
+          // Augmenter le timeout pour les chunks plus longs
+          signal: AbortSignal.timeout(60000) // 60 secondes de timeout
+        });
+        
+        if (!embeddingResponse.ok) {
+          const errorText = await embeddingResponse.text();
+          throw new Error(`Erreur lors de la génération de l'embedding pour le chunk ${i}: ${errorText}`);
+        }
+        
+        const embeddingData = await embeddingResponse.json();
+        
+        if (!embeddingData.embedding || !Array.isArray(embeddingData.embedding)) {
+          throw new Error(`Format d'embedding invalide: ${JSON.stringify(embeddingData)}`);
+        }
+        
+        const embedding = embeddingData.embedding;
+        console.log(`Embedding généré avec succès: ${embedding.length} dimensions`);
+        
+        // Vérifier la validité de l'embedding
+        if (!isValidEmbedding(embedding)) {
+          console.warn(`Embedding invalide pour le chunk ${i}`);
+          failedEmbeddings++;
+          continue;
+        }
+        
+        // Insérer l'embedding dans la base de données
+        const formattedEmbedding = formatEmbeddingForPgVector(embedding);
+        await query(
+          'INSERT INTO embeddings (chunk_id, embedding) VALUES ($1, $2)',
+          [chunkId, formattedEmbedding]
+        );
+        console.log(`Embedding inséré avec succès pour le chunk ${i+1}`);
+        successfulEmbeddings++;
+      } catch (embeddingError) {
+        console.error(`Erreur lors de la génération de l'embedding pour le chunk ${i}:`, embeddingError);
+        failedEmbeddings++;
       }
-      
-      const embeddingData = await embeddingResponse.json();
-      const embedding = embeddingData.embedding;
-      
-      // Vérifier la validité de l'embedding
-      if (!isValidEmbedding(embedding)) {
-        console.warn(`Embedding invalide pour le chunk ${i}`);
-        continue;
-      }
-      
-      // Insérer l'embedding dans la base de données
-      await query(
-        'INSERT INTO embeddings (chunk_id, embedding) VALUES ($1, $2)',
-        [chunkId, formatEmbeddingForPgVector(embedding)]
-      );
     }
+    
+    console.log(`Traitement terminé: ${successfulEmbeddings} embeddings réussis, ${failedEmbeddings} échecs`);
     
     // Supprimer le fichier temporaire
     await unlink(filePath);
+    console.log(`Fichier temporaire supprimé: ${filePath}`);
     
     return {
       success: true,
       documentId,
       chunkCount: chunks.length,
+      embeddingsGenerated: successfulEmbeddings,
+      embeddingsFailed: failedEmbeddings,
       message: 'Document traité avec succès',
       fileInfo: fileDetails
     };
@@ -187,12 +230,15 @@ export async function POST(req: NextRequest) {
   try {
     // Initialiser la base de données
     await initializeDatabase();
+    console.log('Base de données initialisée');
     
-    // Traiter le fichier
+    // Uploader le fichier
+    console.log('Traitement de la requête d\'upload...');
     const fileInfo = await handleFormData(req);
+    console.log(`Fichier uploadé avec succès: ${fileInfo.filename}`);
     
     try {
-      // Insérer le document et ses chunks dans la base de données
+      // Traiter le document et ses chunks dans la base de données
       const result = await processAndStoreDocument(fileInfo.filePath, fileInfo.filename);
       
       // Ajouter les infos du fichier au résultat
@@ -201,6 +247,9 @@ export async function POST(req: NextRequest) {
         size: fileInfo.size,
         type: fileInfo.type
       };
+      
+      // Vérifier l'état final de la base de données
+      await checkDatabaseState();
       
       return NextResponse.json(result);
       

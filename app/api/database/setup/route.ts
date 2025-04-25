@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { EMBEDDING_DIMENSIONS } from '@/lib/embeddings/utils';
+
+// On utilise la plus grande dimension connue pour créer la table
+const MAX_EMBEDDING_DIMENSION = Math.max(...Object.values(EMBEDDING_DIMENSIONS));
 
 export async function GET() {
   const pool = new Pool({
@@ -45,20 +49,53 @@ export async function GET() {
       `);
       console.log('Table des chunks créée');
 
-      // Créer la table pour les embeddings
+      // Vérifier si la table embeddings existe déjà
+      const tableExistsResult = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public'
+          AND table_name = 'embeddings'
+        );
+      `);
+
+      if (tableExistsResult.rows[0].exists) {
+        // La table existe, essayons de modifier la colonne vector
+        try {
+          // On drop la table existante pour la recréer avec la bonne dimensionalité
+          await client.query(`
+            DROP TABLE IF EXISTS embeddings;
+          `);
+          console.log('Table des embeddings supprimée pour modification');
+        } catch (error) {
+          console.error('Erreur lors de la modification de la table embeddings:', error);
+        }
+      }
+
+      // Créer la table pour les embeddings avec la dimension maximale
       await client.query(`
         CREATE TABLE IF NOT EXISTS embeddings (
           id SERIAL PRIMARY KEY,
           chunk_id INTEGER REFERENCES chunks(id) ON DELETE CASCADE,
-          embedding vector(1024) NOT NULL,
+          embedding vector(${MAX_EMBEDDING_DIMENSION}) NOT NULL,
+          model_name TEXT DEFAULT 'unknown',
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
       `);
-      console.log('Table des embeddings créée');
+      console.log(`Table des embeddings créée avec dimension ${MAX_EMBEDDING_DIMENSION}`);
+      
+      // Créer un index pour la recherche de similarité
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS embeddings_vector_idx 
+        ON embeddings 
+        USING ivfflat (embedding vector_cosine_ops)
+        WITH (lists = 100);
+      `);
+      console.log('Index de similarité créé');
       
       return NextResponse.json({
         success: true,
-        message: 'Base de données initialisée avec succès'
+        message: 'Base de données initialisée avec succès',
+        embeddingDimension: MAX_EMBEDDING_DIMENSION
       });
     } catch (error) {
       console.error('Erreur lors de l\'initialisation de la base de données:', error);

@@ -36,6 +36,9 @@ export default function RootLayout({
               <div className="flex space-x-4">
                 <Link href="/" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Chat</Link>
                 <Link href="/documents" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Documents</Link>
+                <Link href="/search" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Recherche</Link>
+                <Link href="/regen" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Maintenance</Link>
+                <Link href="/api/diagnostics" target="_blank" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Diagnostics</Link>
               </div>
             </div>
           </nav>

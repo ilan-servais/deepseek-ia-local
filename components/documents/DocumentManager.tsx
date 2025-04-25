@@ -23,7 +23,6 @@ const DocumentManager: React.FC = () => {
         onUploadSuccess={handleUploadSuccess}
         onUploadError={handleUploadError}
       />
-      
       <DocumentList key={refreshTrigger} />
     </>
   )

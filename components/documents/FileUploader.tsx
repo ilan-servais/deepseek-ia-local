@@ -35,9 +35,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       return
     }
 
-    const allowedTypes = ['application/pdf', 'text/plain']
+    const allowedTypes = ['application/pdf', 'text/plain', 'text/markdown', 'text/x-markdown']
     if (!allowedTypes.includes(selectedFile.type)) {
-      setError('Seuls les fichiers PDF et texte sont acceptés')
+      setError('Seuls les fichiers PDF, texte et Markdown sont acceptés')
       return
     }
 
@@ -84,7 +84,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       <div className="mb-4">
         <h3 className="text-lg font-medium text-gray-800">Ajouter un document</h3>
         <p className="text-sm text-gray-500 mt-1">
-          Téléchargez un fichier PDF ou texte pour l'ajouter à votre base de connaissances.
+          Téléchargez un fichier PDF, texte ou Markdown pour l'ajouter à votre base de connaissances.
         </p>
       </div>
 
@@ -95,11 +95,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         <input 
           type="file" 
           ref={fileInputRef}
-          accept=".pdf,.txt" 
+          accept=".pdf,.txt,.md" 
           onChange={handleFileChange}
           className="hidden" 
         />
-        
         <div className="flex flex-col items-center justify-center">
           <svg className="h-10 w-10 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -111,7 +110,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
               Cliquez pour sélectionner un fichier ou glissez-déposez un fichier ici
             </p>
           )}
-          <p className="text-xs text-gray-400 mt-1">PDF ou TXT (max 10MB)</p>
+          <p className="text-xs text-gray-400 mt-1">PDF, TXT ou MD (max 10MB)</p>
         </div>
       </div>
 
