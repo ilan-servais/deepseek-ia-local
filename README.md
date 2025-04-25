@@ -83,6 +83,32 @@ npm run dev
 
 Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur pour voir l'interface.
 
+## 📄 Types de documents supportés
+
+Le système RAG peut traiter les formats de fichiers suivants :
+
+1. **PDF** (.pdf)
+   - Documents textuels
+   - Rapports, articles, livres
+   - CV et documents professionnels
+
+2. **Texte brut** (.txt)
+   - Fichiers texte simple
+   - Notes, transcriptions
+   - Données structurées en texte
+
+3. **Markdown** (.md)
+   - Documentation technique
+   - Notes formatées
+   - Articles avec mise en forme légère
+
+Le système extrait automatiquement le texte de ces documents, les découpe en segments plus petits ("chunks") et génère des embeddings vectoriels pour permettre la recherche sémantique.
+
+**Limites actuelles :**
+- Taille maximale de fichier : 10MB
+- Les images dans les PDFs ne sont pas analysées (extraction de texte uniquement)
+- Les tableaux complexes peuvent perdre leur structure lors de l'extraction
+
 ## 🔧 Configuration
 
 Assurez-vous que votre fichier `.env.local` contient les variables d'environnement suivantes:
