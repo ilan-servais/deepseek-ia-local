@@ -95,7 +95,7 @@ rag-deepseek/
 
 ### Frontend
 - **Next.js 15** avec App Router pour le routage et le rendu
-- **TailwindCSS** pour le styling
+- **TailwindCSS** pour le style
 - **Vercel AI SDK** pour la gestion des conversations et du streaming
 - **Composants React** modulaires et réutilisables
 
