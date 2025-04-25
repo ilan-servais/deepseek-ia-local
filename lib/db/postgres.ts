@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
+import { runMigrations } from './migrations';
 
 // Charger les variables d'environnement
 dotenv.config({ path: '.env.local' });
@@ -12,10 +13,19 @@ const pool = new Pool({
 // Constante pour la dimension des embeddings (mise à jour à 1536)
 export const EMBEDDING_DIMENSION = 1536;
 
-// Tester la connexion et initialiser la base de données
+/**
+ * Initialise la base de données et vérifie la connexion
+ */
 export async function initializeDatabase() {
-  const client = await pool.connect();
   try {
+    // Vérifier la connexion à la base de données
+    const client = await pool.connect();
+    client.release();
+    console.log("Connexion à PostgreSQL établie avec succès");
+    
+    // Exécuter les migrations SQL
+    await runMigrations();
+    
     // Vérifier si l'extension pgvector est installée
     await client.query(`
       CREATE EXTENSION IF NOT EXISTS vector;
@@ -69,9 +79,8 @@ export async function initializeDatabase() {
 
     console.log(`Base de données initialisée avec succès (dimension d'embedding: ${EMBEDDING_DIMENSION})`);
   } catch (error) {
-    console.error('Erreur lors de l\'initialisation de la base de données:', error);
-  } finally {
-    client.release();
+    console.error("Erreur lors de l'initialisation de la base de données:", error);
+    throw error;
   }
 }
 

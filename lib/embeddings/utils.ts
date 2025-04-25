@@ -3,7 +3,13 @@
  */
 
 // La dimension d'embeddings que nous utilisons
-const EMBEDDING_DIMENSION = 1536;
+export const EMBEDDING_DIMENSION = 1536;
+
+// Dimensions connues pour différents modèles
+export const EMBEDDING_DIMENSIONS = {
+  "deepseek-r1:1.5b": 1536,
+  "default": 1536
+};
 
 /**
  * Formate un tableau d'embeddings pour le stocker dans pgvector
@@ -49,25 +55,18 @@ export function formatEmbeddingForPgVector(embedding: number[]): string {
  * @returns true si valide, sinon false
  */
 export function isValidEmbedding(embedding: any): boolean {
-  // Vérifier que c'est un tableau
+  // Vérifier si c'est un tableau
   if (!Array.isArray(embedding)) {
-    console.warn('L\'embedding n\'est pas un tableau:', embedding);
     return false;
   }
   
-  // Vérifier que ce n'est pas un tableau vide
+  // Vérifier si le tableau est vide
   if (embedding.length === 0) {
-    console.warn('L\'embedding est un tableau vide');
     return false;
   }
   
-  // Vérifier que tous les éléments sont des nombres
-  if (!embedding.every(item => typeof item === 'number')) {
-    console.warn('L\'embedding contient des éléments non numériques');
-    return false;
-  }
-  
-  return true;
+  // Vérifier si tous les éléments sont des nombres finis
+  return embedding.every(item => typeof item === 'number' && Number.isFinite(item));
 }
 
 /**
