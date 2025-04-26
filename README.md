@@ -113,7 +113,7 @@ Le système extrait automatiquement le texte de ces documents, les découpe en s
 
 Assurez-vous que votre fichier `.env.local` contient les variables d'environnement suivantes:
 
-```
+```bash
 OLLAMA_API_HOST=http://localhost:11434
 
 # Configuration PostgreSQL
@@ -158,27 +158,112 @@ Si vous rencontrez des erreurs:
 
 5. Pour des diagnostics, consultez la page `/api/diagnostics` dans votre navigateur.
 
+6. Vous pouvez également utiliser l'utilitaire de test pour vérifier différentes fonctionnalités du système :
+
+```bash
+# Diagnostique complet du système
+node scripts/testRegeneration.js diagnose
+
+# Vérifier et régénérer les embeddings manquants
+node scripts/testRegeneration.js
+
+# Recherche sémantique dans les documents
+node scripts/testRegeneration.js search "terme de recherche"
+
+# Recherche exacte par nom de fichier
+node scripts/testRegeneration.js search "CV" --exact
+
+# Afficher l'aide
+node scripts/testRegeneration.js help
+```
+
+## 🧪 Outils de test
+
+Le projet inclut des outils de ligne de commande pour tester le système RAG :
+
+### Scripts de test
+
+```txt
+scripts/
+└── testRegeneration.js    # Utilitaire pour tester la recherche et vérifier les embeddings
+```
+
+### Commandes disponibles
+
+- `diagnose` : Affiche l'état du système (base de données, Ollama, documents indexés)
+- `regenerate` : Vérifie et régénère les embeddings manquants dans les documents
+- `search "terme"` : Effectue une recherche sémantique dans les documents
+  - Option `--exact` : Recherche exacte par nom de fichier au lieu de la recherche sémantique
+- `help` : Affiche l'aide avec toutes les commandes disponibles
+
+### Exemples d'utilisation
+
+```bash
+# Afficher l'état du système
+node scripts/testRegeneration.js diagnose
+
+# Rechercher "développeur" dans tous les documents (recherche sémantique)
+node scripts/testRegeneration.js search "développeur"
+
+# Rechercher des documents contenant "CV" dans leur nom
+node scripts/testRegeneration.js search "CV" --exact
+```
+
 ## 📁 Structure du projet
 
 ```txt
 rag-deepseek/
-├── app/
-│   ├── api/
-│   │   └── chat/
-│   │       └── route.ts      # Endpoint API pour le chat
-│   ├── globals.css           # Styles globaux
-│   ├── layout.tsx            # Layout principal
-│   └── page.tsx              # Page d'accueil
-├── components/
-│   ├── base/
-│   │   ├── Button.tsx        # Composant de bouton réutilisable
-│   │   ├── Form.tsx          # Composant de formulaire
-│   │   └── Input.tsx         # Composant d'input 
-│   └── chat/
-│       └── Client.tsx        # Interface principale du chat
-├── public/
-└── ... (fichiers de configuration)
+├── app/                    # Dossier principal de l'application Next.js
+│   ├── api/                # Endpoints d'API
+│   │   ├── chat/
+│   │   │   └── route.ts    # API pour la fonctionnalité de chat
+│   │   ├── database/       # API de gestion de la base de données
+│   │   ├── diagnostics/    # API de diagnostics du système
+│   │   ├── documents/      # API de gestion des documents
+│   │   │   ├── search/     # Recherche dans les documents
+│   │   │   ├── upload/     # Téléchargement de documents
+│   │   │   └── regenerate-all/ # Régénération des embeddings
+│   │   └── regenerate-embeddings/ # Vérification et régénération des embeddings manquants
+│   ├── chat/               # Page de chat
+│   ├── diagnostics/        # Page de diagnostics système
+│   ├── documents/          # Page de gestion des documents
+│   ├── globals.css         # Styles globaux
+│   ├── layout.tsx          # Layout principal de l'application
+│   └── page.tsx            # Page d'accueil
+├── components/             # Composants React réutilisables
+│   ├── base/               # Composants de base
+│   │   ├── Button.tsx      # Boutons stylisés
+│   │   ├── Form.tsx        # Formulaires
+│   │   └── Input.tsx       # Champs de saisie
+│   ├── chat/               # Composants spécifiques au chat
+│   │   └── Client.tsx      # Interface principale du chat
+│   ├── documents/          # Composants de gestion des documents
+│   └── layout/             # Composants de structure de page
+├── lib/                    # Bibliothèques et utilitaires
+│   ├── db/                 # Utilitaires de base de données
+│   │   └── postgres.ts     # Client PostgreSQL avec pgvector
+│   ├── embeddings/         # Gestion des embeddings
+│   ├── documents/          # Traitement des documents
+│   └── utils/              # Utilitaires divers
+│       └── logger.ts       # Système de journalisation
+├── migrations/             # Scripts SQL de migration de base de données
+├── public/                 # Fichiers statiques accessibles publiquement
+├── scripts/                # Scripts utilitaires
+│   └── testRegeneration.js # Utilitaire CLI pour tester le système RAG
+├── uploads/                # Stockage temporaire des fichiers téléchargés
+├── docker-compose.yml      # Configuration Docker pour PostgreSQL + pgvector
+├── next.config.js          # Configuration Next.js
+├── package.json            # Dépendances et scripts npm
+├── tsconfig.json           # Configuration TypeScript
+└── README.md               # Documentation du projet
 ```
+
+La structure ci-dessus montre l'organisation logique du projet, avec une séparation claire entre :
+- Les routes API et les pages de l'application (`app/`)
+- Les composants réutilisables (`components/`)
+- Les bibliothèques et utilitaires (`lib/`)
+- Les scripts de migration et d'administration (`migrations/` et `scripts/`)
+- Les fichiers de configuration du projet
 
 ## 🔍 Architecture technique
 
