@@ -6,7 +6,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { query, checkDatabaseState } from '@/lib/db/postgres';
 import { formatEmbeddingForPgVector, isValidEmbedding } from '@/lib/embeddings/utils';
-import { extractTextFromFile, chunkText } from '@/lib/services/textExtractor';
+import { extractTextFromFile, chunkTextSemantic } from '@/lib/services/textExtractor';
 import { initializeDatabase } from '@/lib/db/postgres';
 import { sanitizeFilename, validateFileType } from '@/lib/utils/fileUtils';
 
@@ -43,7 +43,9 @@ interface FileInfo {
 interface DocumentMetadata {
   title: string;
   author?: string;
+  date?: string;
   category?: string;
+  source_url?: string;
   tags?: string[];
   description?: string;
 }
@@ -164,10 +166,20 @@ async function processAndStoreDocument(fileInfo: FileInfo, metadata: DocumentMet
     const extractedText = await extractTextFromFile(fileInfo.filePath);
     logger.info(`Texte extrait avec succès: ${extractedText.content.length} caractères`);
     
+    // Fusionner les métadonnées extraites avec celles fournies
+    if (extractedText.metadata) {
+      metadata = {
+        ...metadata,
+        title: metadata.title || extractedText.metadata.title || fileInfo.filename,
+        author: metadata.author || extractedText.metadata.author || 'Inconnu',
+        date: metadata.date || extractedText.metadata.date || new Date().toISOString().split('T')[0]
+      };
+    }
+    
     let documentId: number;
     const normalizedFilename = fileInfo.sanitizedName.toLowerCase();
     
-    // Vérifier si le document existe déjà - MODIFIÉ ICI
+    // Vérifier si le document existe déjà
     const existingDoc = await query(
       'SELECT id FROM documents WHERE LOWER(filename) = $1',
       [normalizedFilename]
@@ -185,22 +197,30 @@ async function processAndStoreDocument(fileInfo: FileInfo, metadata: DocumentMet
          author = $4,
          category = $5,
          description = $6,
+         date = $7,
+         source_url = $8,
          updated_at = CURRENT_TIMESTAMP
-         WHERE id = $7`,
+         WHERE id = $9`,
         [
           fileInfo.filename,
           extractedText.content,
           metadata.title || fileInfo.filename,
-          metadata.author || null,
-          metadata.category || null,
+          metadata.author || 'Inconnu',
+          metadata.category || 'Non catégorisé',
           metadata.description || null,
+          metadata.date ? new Date(metadata.date).toISOString() : new Date().toISOString(),
+          metadata.source_url || null,
           documentId
         ]
       );
       
       logger.info(`Document mis à jour avec l'ID: ${documentId}`);
+      
+      // Suppression des chunks et embeddings existants
+      await query('DELETE FROM chunks WHERE document_id = $1', [documentId]);
+      logger.info(`Chunks et embeddings existants supprimés pour le document ${documentId}`);
     } else {
-      // Insertion d'un nouveau document - MODIFIÉ ICI
+      // Insertion d'un nouveau document
       const documentResult = await query(
         `INSERT INTO documents(
           filename,
@@ -208,15 +228,19 @@ async function processAndStoreDocument(fileInfo: FileInfo, metadata: DocumentMet
           title,
           author,
           category,
-          description
-        ) VALUES($1, $2, $3, $4, $5, $6) RETURNING id`,
+          description,
+          date,
+          source_url
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
         [
           fileInfo.filename,
           extractedText.content,
           metadata.title || fileInfo.filename,
-          metadata.author || null,
-          metadata.category || null,
-          metadata.description || null
+          metadata.author || 'Inconnu',
+          metadata.category || 'Non catégorisé',
+          metadata.description || null,
+          metadata.date ? new Date(metadata.date).toISOString() : new Date().toISOString(),
+          metadata.source_url || null
         ]
       );
       
@@ -257,9 +281,14 @@ async function processAndStoreDocument(fileInfo: FileInfo, metadata: DocumentMet
       logger.info(`${fileInfo.tags.length} tags associés au document ${documentId}`);
     }
     
-    // Découper le texte en chunks
-    const chunks = chunkText(extractedText.content);
-    logger.info(`Texte découpé en ${chunks.length} chunks`);
+    // Découper le texte en chunks sémantiques
+    const chunks = chunkTextSemantic(extractedText.content, {
+      minSize: 200,        // Minimum ~200 tokens par chunk
+      targetSize: 500,     // Cible ~500 tokens par chunk (idéal)
+      maxSize: 800,        // Maximum ~800 tokens par chunk
+      overlapSize: 50      // 50 tokens de chevauchement entre chunks
+    });
+    logger.info(`Texte découpé en ${chunks.length} chunks sémantiques`);
     
     // Vérifier que Ollama est disponible
     try {
@@ -363,6 +392,13 @@ async function processAndStoreDocument(fileInfo: FileInfo, metadata: DocumentMet
         name: fileInfo.filename,
         size: fileInfo.size,
         type: fileInfo.type,
+        metadata: {
+          title: metadata.title,
+          author: metadata.author,
+          category: metadata.category,
+          date: metadata.date,
+          source_url: metadata.source_url
+        },
         tags: fileInfo.tags
       }
     };
@@ -378,7 +414,7 @@ export async function POST(req: NextRequest) {
     await initializeDatabase();
     logger.info('Base de données initialisée');
     
-    // Récupérer le FormData une seule fois au début
+    // Récupérer le FormData
     const formData = await req.formData();
     
     // Uploader le fichier avec gestion du remplacement
@@ -386,12 +422,13 @@ export async function POST(req: NextRequest) {
     const fileInfo = await uploadAndReplaceFile(formData);
     logger.info(`Fichier uploadé avec succès: ${fileInfo.filename}`);
     
-    // Récupérer les métadonnées à partir du formData déjà existant
+    // Récupérer les métadonnées du formData
     const metadataRaw = formData.get('metadata') as string || '{}';
     let metadata: DocumentMetadata = { title: fileInfo.filename };
     
     try {
       metadata = JSON.parse(metadataRaw);
+      metadata.title = metadata.title || fileInfo.filename;
     } catch (error) {
       logger.warn('Erreur lors du parsing des métadonnées, utilisation des valeurs par défaut');
     }
