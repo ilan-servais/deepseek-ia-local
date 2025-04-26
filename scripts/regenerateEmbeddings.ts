@@ -4,7 +4,7 @@ import { formatEmbeddingForPgVector } from '@/lib/embeddings/utils';
 /**
  * Script pour régénérer tous les embeddings manquants pour les chunks existants
  */
-async function regenerateEmbeddings() {
+export async function regenerateEmbeddings() {
   console.log("Démarrage de la régénération des embeddings...");
   
   try {
@@ -78,6 +78,3 @@ async function regenerateEmbeddings() {
     console.error("Erreur lors de la régénération des embeddings:", error);
   }
 }
-
-// Exécution du script
-regenerateEmbeddings();
