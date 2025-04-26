@@ -158,24 +158,7 @@ Si vous rencontrez des erreurs:
 
 5. Pour des diagnostics, consultez la page `/api/diagnostics` dans votre navigateur.
 
-6. Vous pouvez également utiliser l'utilitaire de test pour vérifier différentes fonctionnalités du système :
-
-```bash
-# Diagnostique complet du système
-node scripts/testRegeneration.js diagnose
-
-# Vérifier et régénérer les embeddings manquants
-node scripts/testRegeneration.js
-
-# Recherche sémantique dans les documents
-node scripts/testRegeneration.js search "terme de recherche"
-
-# Recherche exacte par nom de fichier
-node scripts/testRegeneration.js search "CV" --exact
-
-# Afficher l'aide
-node scripts/testRegeneration.js help
-```
+6. Vous pouvez également utiliser l'utilitaire de test pour vérifier différentes fonctionnalités du système (voir la section "Outils de test" ci-dessous pour plus de détails).
 
 ## 🧪 Outils de test
 

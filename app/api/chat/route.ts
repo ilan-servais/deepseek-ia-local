@@ -30,87 +30,192 @@ async function searchRelevantDocuments(userQuery: string): Promise<string[]> {
       return [];
     }
 
-    // Recherche par mots-clés pour des fichiers spécifiques (si mentionnés explicitement)
-    const fileNameMatch = userQuery.match(/document\s+["']([^"']+)["']/i);
-    if (fileNameMatch) {
-      const fileName = fileNameMatch[1];
-      console.log(`Détection d'une demande explicite pour le document: "${fileName}"`);
-      
-      // Recherche directe par nom de fichier
-      const fileResults = await query(`
-        SELECT d.id, d.filename
-        FROM documents d
-        WHERE d.filename ILIKE $1
-      `, [`%${fileName}%`]);
-      
-      if (fileResults.rows.length > 0) {
-        console.log(`Document trouvé par correspondance de nom: ${fileResults.rows[0].filename}`);
-        
-        // Récupérer les chunks de ce document
-        const chunks = await query(`
-          SELECT c.content
-          FROM chunks c
-          WHERE c.document_id = $1
-          ORDER BY c.chunk_index ASC
-        `, [fileResults.rows[0].id]);
-        
-        console.log(`${chunks.rows.length} chunks récupérés du document ${fileResults.rows[0].filename}`);
-        
-        // Retourner le contenu des chunks
-        return chunks.rows.map(row => row.content);
+    // Recherche pour des noms propres spécifiques mentionnés dans la requête
+    const nameMatches = findNamedEntities(userQuery);
+    if (nameMatches.length > 0) {
+      console.log(`Noms propres détectés dans la requête: ${nameMatches.join(', ')}`);
+
+      // Recherche directe dans le contenu des documents pour ces noms propres
+      const nameResults = [];
+
+      for (const name of nameMatches) {
+        console.log(`Recherche de documents contenant "${name}"...`);
+        const contentResults = await query(`
+          SELECT DISTINCT
+            d.id,
+            d.filename,
+            c.content,
+            1 as priority
+          FROM 
+            documents d
+          JOIN 
+            chunks c ON d.id = c.document_id
+          WHERE 
+            c.content ILIKE $1
+          ORDER BY
+            d.id
+          LIMIT 3;
+        `, [`%${name}%`]);
+
+        if (contentResults.rows.length > 0) {
+          console.log(`${contentResults.rows.length} documents trouvés contenant "${name}"`);
+          nameResults.push(...contentResults.rows.map((row: any) => 
+            `Extrait du document "${row.filename}" (correspondance directe pour "${name}"):
+${row.content}`
+          ));
+        }
+      }
+
+      if (nameResults.length > 0) {
+        // Poursuivre avec la recherche sémantique standard pour compléter les résultats
+        const semanticResults = await performSemanticSearch(userQuery);
+        return [...nameResults, ...semanticResults];
       }
     }
-    
-    // Recherche sémantique standard
-    console.log('Génération de l\'embedding pour la requête utilisateur...');
-    const response = await fetch(`${process.env.OLLAMA_API_HOST}/api/embeddings`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'deepseek-r1:1.5b',
-        prompt: userQuery,
-      }),
-    });
 
-    if (!response.ok) {
-      console.error('Erreur lors de la génération de l\'embedding pour la requête:', await response.text());
-      return [];
+    // Rechercher spécifiquement pour Ilan Servais si mentionné dans la requête
+    if (userQuery.toLowerCase().includes('ilan') || userQuery.toLowerCase().includes('servais')) {
+      console.log(`Mention d'Ilan Servais détectée, recherche directe dans les documents CV...`);
+      
+      const cvResults = await query(`
+        SELECT 
+          d.id,
+          d.filename, 
+          c.content
+        FROM 
+          documents d
+        JOIN 
+          chunks c ON d.id = c.document_id
+        WHERE 
+          d.filename ILIKE '%cv%' 
+          AND d.filename ILIKE '%ilan%'
+        LIMIT 2;
+      `);
+      
+      if (cvResults.rows.length > 0) {
+        console.log(`${cvResults.rows.length} CV d'Ilan Servais trouvés`);
+        const cvContents = cvResults.rows.map((row: any) => 
+          `Extrait du CV "${row.filename}" (correspondance directe):
+${row.content}`
+        );
+        
+        // Ajouter les résultats de la recherche sémantique standard
+        const semanticResults = await performSemanticSearch(userQuery);
+        return [...cvContents, ...semanticResults];
+      }
     }
 
-    const data = await response.json();
-    const queryEmbedding = data.embedding;
-    console.log(`Embedding généré avec ${queryEmbedding.length} dimensions`);
+    // Si aucun nom ou pas de correspondances, continuer avec la recherche standard
+    return await performSemanticSearch(userQuery);
 
-    // Rechercher les chunks les plus similaires dans la base de données
-    console.log('Recherche des chunks similaires...');
-    const result = await query(`
-      SELECT 
-        c.content, 
-        d.filename,
-        1 - (e.embedding <=> $1) as similarity
-      FROM chunks c
-      JOIN embeddings e ON c.id = e.chunk_id
-      JOIN documents d ON c.document_id = d.id
-      ORDER BY similarity DESC
-      LIMIT 5;
-    `, [formatEmbeddingForPgVector(queryEmbedding)]);
-
-    console.log(`${result.rows.length} chunks trouvés avec ces similarités:`);
-    result.rows.forEach((row: any, idx: number) => {
-      console.log(`Chunk ${idx+1} - Fichier: ${row.filename}, Similarité: ${row.similarity}`);
-    });
-
-    // Retourner le contenu des chunks les plus pertinents
-    return result.rows.map((row: any) => 
-      `Extrait du document "${row.filename}" (similarité: ${Math.round(row.similarity * 100)}%):
-${row.content}`
-    );
   } catch (error) {
     console.error('Erreur lors de la recherche de documents:', error);
     return [];
   }
+}
+
+// Fonction pour extraire des noms propres potentiels de la requête
+function findNamedEntities(text: string): string[] {
+  // Recherche de mots commençant par une majuscule suivis d'un autre mot avec majuscule (noms complets)
+  const namedEntities = [];
+  
+  // Extraire les noms propres complets (Prénom Nom)
+  const fullNamePattern = /[A-Z][a-zÀ-ÿ]+\s+[A-Z][a-zÀ-ÿ]+/g;
+  const fullNames = text.match(fullNamePattern) || [];
+  
+  // Extraire les mots isolés commençant par une majuscule (potentiellement des noms propres)
+  const singleNamePattern = /\b[A-Z][a-zÀ-ÿ]{2,}\b/g;
+  const singleNames = text.match(singleNamePattern) || [];
+  
+  // Filtrer les mots communs qui pourraient commencer par une majuscule
+  const commonWords = ['Je', 'Tu', 'Il', 'Elle', 'On', 'Nous', 'Vous', 'Ils', 'Elles', 
+                       'Bonjour', 'Salut', 'Merci', 'Est', 'Oui', 'Non'];
+                       
+  // Combiner et filtrer les résultats
+  return [...fullNames, ...singleNames]
+    .filter(word => !commonWords.includes(word))
+    .map(match => match.trim());
+}
+
+// Fonction pour effectuer la recherche sémantique standard
+async function performSemanticSearch(userQuery: string): Promise<string[]> {
+  // Recherche par mots-clés pour des fichiers spécifiques (si mentionnés explicitement)
+  const fileNameMatch = userQuery.match(/document\s+["']([^"']+)["']/i);
+  if (fileNameMatch) {
+    const fileName = fileNameMatch[1];
+    console.log(`Détection d'une demande explicite pour le document: "${fileName}"`);
+    
+    // Recherche directe par nom de fichier
+    const fileResults = await query(`
+      SELECT d.id, d.filename
+      FROM documents d
+      WHERE d.filename ILIKE $1
+    `, [`%${fileName}%`]);
+    
+    if (fileResults.rows.length > 0) {
+      console.log(`Document trouvé par correspondance de nom: ${fileResults.rows[0].filename}`);
+      
+      // Récupérer les chunks de ce document
+      const chunks = await query(`
+        SELECT c.content
+        FROM chunks c
+        WHERE c.document_id = $1
+        ORDER BY c.chunk_index ASC
+      `, [fileResults.rows[0].id]);
+      
+      console.log(`${chunks.rows.length} chunks récupérés du document ${fileResults.rows[0].filename}`);
+      
+      // Retourner le contenu des chunks
+      return chunks.rows.map(row => row.content);
+    }
+  }
+  
+  // Recherche sémantique standard
+  console.log('Génération de l\'embedding pour la requête utilisateur...');
+  const response = await fetch(`${process.env.OLLAMA_API_HOST}/api/embeddings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek-r1:1.5b',
+      prompt: userQuery,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error('Erreur lors de la génération de l\'embedding pour la requête:', await response.text());
+    return [];
+  }
+
+  const data = await response.json();
+  const queryEmbedding = data.embedding;
+  console.log(`Embedding généré avec ${queryEmbedding.length} dimensions`);
+
+  // Rechercher les chunks les plus similaires dans la base de données
+  console.log('Recherche des chunks similaires...');
+  const result = await query(`
+    SELECT 
+      c.content, 
+      d.filename,
+      1 - (e.embedding <=> $1) as similarity
+    FROM chunks c
+    JOIN embeddings e ON c.id = e.chunk_id
+    JOIN documents d ON c.document_id = d.id
+    ORDER BY similarity DESC
+    LIMIT 5;
+  `, [formatEmbeddingForPgVector(queryEmbedding)]);
+
+  console.log(`${result.rows.length} chunks trouvés avec ces similarités:`);
+  result.rows.forEach((row: any, idx: number) => {
+    console.log(`Chunk ${idx+1} - Fichier: ${row.filename}, Similarité: ${row.similarity}`);
+  });
+
+  // Retourner le contenu des chunks les plus pertinents
+  return result.rows.map((row: any) => 
+    `Extrait du document "${row.filename}" (similarité: ${Math.round(row.similarity * 100)}%):
+${row.content}`
+  );
 }
 
 // Réponse POST envoyée par useChat (client)
